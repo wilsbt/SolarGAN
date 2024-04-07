@@ -2,6 +2,7 @@ import numpy as np
 import os, glob, time
 from random import shuffle
 from imageio import imread
+import matplotlib.pyplot as plt
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
@@ -34,13 +35,14 @@ OUTPUT_DATA = 'test_output'
 ISIZE = 1024
 NC_IN = 1
 NC_OUT = 1
-BATCH_SIZE = 2  # increasing the size causes to run out of memory
+BATCH_SIZE = 1  # increasing the size causes to run out of memory
 with open("config.json", "r") as read_file:
     config_file = json.load(read_file)
 MAX_LAYERS = config_file["max_layers"]  # 1 for 16, 2 for 34, 3 for 70, 4 for 142, and 5 for 286
 DISPLAY_ITERS = config_file["display_iter"]
 NITERS = config_file["max_iter"]
-TRIAL_NAME = 'TEST' + str(MAX_LAYERS)
+TRIAL_NAME = f'{config_file["trial_name"]}_{NITERS}_{MAX_LAYERS}'
+# TRIAL_NAME = 'TEST' + str(MAX_LAYERS) # Put this in config and use it so you can dont have to overwrite your tests
 
 MODE = INPUT_DATA + '_to_' + OUTPUT_DATA
 
@@ -149,9 +151,9 @@ def unet_g(isize, nc_in, nc_out, fixed_input_size=True):
 
 # %%
 
-net_d = basic_d(ISIZE, NC_IN, NC_OUT, MAX_LAYERS)
+net_d = basic_d(128, NC_IN, NC_OUT, MAX_LAYERS) # debug, change 100 to ISIZE
 
-net_g = unet_g(ISIZE, NC_IN, NC_OUT)
+net_g = unet_g(128, NC_IN, NC_OUT) # debug, change 100 to ISIZE
 real_a = net_g.input
 fake_b = net_g.output
 real_b = net_d.inputs[1]  # ground truth
@@ -253,16 +255,29 @@ err_l_sum = 0
 err_g_sum = 0
 err_d_sum = 0
 
+err_l_list = []
+err_g_list = []
+err_d_list = []
+
+
+
 while gen_iters <= NITERS:
     current_epoch, train_a, train_b = next(
         train_batch)  # this returns the epoch number, and some other things. this just gets the next element from
     # the generator
+
     # input images:
     train_a = train_a.reshape((BATCH_SIZE, ISIZE, ISIZE,
                                NC_IN))  # reshape TRAIN_A to a number of separate images, with dim ISIZE^2 and NC_IN
     # channels
+
     # output images
     train_b = train_b.reshape((BATCH_SIZE, ISIZE, ISIZE, NC_OUT))
+
+    # crop
+    start = (1024 - 128) // 2
+    train_a = train_a[:, start:start + 128, start:start + 128, :]
+    train_b = train_b[:, start:start + 128, start:start + 128, :]
 
     ERR_D, = net_d_train([train_a, train_b])  # update the weights then find the error
     err_d_sum += ERR_D
@@ -270,6 +285,10 @@ while gen_iters <= NITERS:
     err_g, err_l = net_g_train([train_a, train_b])  # update the weights then find the error
     err_g_sum += err_g
     err_l_sum += err_l
+
+    err_d_list.append(ERR_D)
+    err_g_list.append(err_g)
+    err_l_list.append(err_l)
 
     # info
     if gen_iters % DISPLAY_ITERS == 0:
@@ -287,3 +306,13 @@ while gen_iters <= NITERS:
         t1 = time.time()
 
     gen_iters += 1
+
+plt.plot(err_l_list, label="l")
+plt.plot(err_g_list, label="g")
+plt.plot(err_d_list, label="d")
+plt.xlabel("Iteration")
+plt.ylabel("Loss")
+plt.title("Losses")
+plt.legend()
+os.mkdir('./Figures/' + TRIAL_NAME) if not os.path.exists('./Figures/' + TRIAL_NAME) else None
+plt.savefig('./Figures/' + TRIAL_NAME + '/' + "loss.pdf")

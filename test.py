@@ -23,11 +23,13 @@ with open("config.json", "r") as read_file:
 
 max_layers = config_file["max_layers"]
 mode = 'test_input_to_test_output'
-trial_name = f"TEST{max_layers}"
+
 
 SLEEP_TIME = 10
 DISPLAY_ITER = config_file["display_iter"]
 MAX_ITER = config_file["max_iter"]
+
+trial_name = f'{config_file["trial_name"]}_{MAX_ITER}_{max_layers}'
 
 INPUT = 'test_input'  # input used while training
 INPUT1 = 'test_input1'  # testing input with testing output (near side data)
@@ -160,15 +162,22 @@ while iter <= MAX_ITER:
     UTMF_real = []
     UTMF_fake = []
 
-
+    # for i in range(4):
     for i in range(len(IMAGE_LIST1)):
         img = np.float32(imread(IMAGE_LIST1[i], as_gray=True) / 255.0 * 2 - 1)
         real = np.float32(imread(IMAGE_LIST3[i]), as_gray=True)
         date = IMAGE_LIST1[i][-19:-4]
         img.shape = (BATCH_SIZE, ISIZE, ISIZE, NC_IN)
+        # crop
+        start = (1024 - 128) // 2
+        img = img[:, start:start + 128, start:start + 128, :]
+
         fake = net_g_gen(img)
+
         fake = ((fake[0] + 1) / 2.0 * 255.).clip(0, 255).astype('uint8')
-        fake.shape = (ISIZE, ISIZE) if NC_IN == 1 else (ISIZE, ISIZE, NC_OUT)
+        fake.shape = (128, 128) if NC_IN == 1 else (128, 128, NC_OUT)
+
+        # fake.shape = (ISIZE, ISIZE) if NC_IN == 1 else (ISIZE, ISIZE, NC_OUT) # original
         #        SAVE_NAME = SAVE_PATH1 + OP1 + '_' + DATE + '.png'
         save_name = save_path1 + OP1 + '_' + str(i) + '.png'
         imsave(save_name, fake)
@@ -179,13 +188,21 @@ while iter <= MAX_ITER:
         UTMF_real.append(RT)
         UTMF_fake.append(FT)
 
+    # for j in range(4):
     for j in range(len(IMAGE_LIST2)):
         img = np.float32(imread(IMAGE_LIST2[j], as_gray=True) / 255.0 * 2 - 1)
         date = IMAGE_LIST2[j][-19:-4]
+
         img.shape = (BATCH_SIZE, ISIZE, ISIZE, NC_IN)
+
+        img = img[:, start:start + 128, start:start + 128, :] # crop
+
         fake = net_g_gen(img)
         fake = ((fake[0] + 1) / 2.0 * 255.).clip(0, 255).astype('uint8')
-        fake.shape = (ISIZE, ISIZE) if NC_IN == 1 else (ISIZE, ISIZE, NC_OUT)
+
+        fake.shape = (128, 128) if NC_IN == 1 else (128, 128, NC_OUT)
+        # fake.shape = (ISIZE, ISIZE) if NC_IN == 1 else (ISIZE, ISIZE, NC_OUT)
+
         # SAVE_NAME = SAVE_PATH2 + OP2 + '_' + DATE + '.png'
         save_name = save_path2 + OP2 + '_' + str(j) + '.png'
         imsave(save_name, fake)
@@ -196,7 +213,7 @@ while iter <= MAX_ITER:
 
 
     def load_images(path, num_images):
-        return [np.array(imread(path[i], as_gray=True)) for i in range(num_images)]
+        return np.array([np.array(imread(path[i], as_gray=True)) for i in range(num_images)])
 
 
 
@@ -226,8 +243,9 @@ while iter <= MAX_ITER:
             ax.axis('off')
 
     fig2 = plt.figure()
-    add_subplots_fig2(fig2, INPUT1_IMAGES, 1)
-    add_subplots_fig2(fig2, OUTPUT_IMAGES, 5)
+
+    add_subplots_fig2(fig2, INPUT1_IMAGES[:,start:start + 128,start:start + 128], 1)
+    add_subplots_fig2(fig2, OUTPUT_IMAGES[:,start:start + 128,start:start + 128], 5)
     add_subplots_fig2(fig2, OP1_IMAGES, 9)
     fig2.savefig(figure_path + '_FIGURE2.png')
     plt.close(fig2)
@@ -248,10 +266,10 @@ while iter <= MAX_ITER:
             ax.axis('off')
 
     fig4 = plt.figure()
-    add_subplots_fig4(fig4, INPUT2_IMAGES, 1)
-    add_subplots_fig4(fig4, INPUT_TRAIN_IMAGES, 3)
+    add_subplots_fig4(fig4, INPUT2_IMAGES[:,start:start + 128,start:start + 128], 1)
+    add_subplots_fig4(fig4, INPUT_TRAIN_IMAGES[:,start:start + 128,start:start + 128], 3)
     add_subplots_fig4(fig4, OP2_IMAGES, 5)
-    add_subplots_fig4(fig4, OUTPUT_TRAIN_IMAGES, 7)
+    add_subplots_fig4(fig4, OUTPUT_TRAIN_IMAGES[:,start:start + 128,start:start + 128], 7)
     fig4.savefig(figure_path + '_FIGURE4.png')
     plt.close(fig4)
 
