@@ -160,8 +160,8 @@ while iter <= MAX_ITER:
     UTMF_real = []
     UTMF_fake = []
 
-    for i in range(4):
-    # for i in range(len(IMAGE_LIST1)):
+
+    for i in range(len(IMAGE_LIST1)):
         img = np.float32(imread(IMAGE_LIST1[i], as_gray=True) / 255.0 * 2 - 1)
         real = np.float32(imread(IMAGE_LIST3[i]), as_gray=True)
         date = IMAGE_LIST1[i][-19:-4]
@@ -179,8 +179,7 @@ while iter <= MAX_ITER:
         UTMF_real.append(RT)
         UTMF_fake.append(FT)
 
-    # for j in range(len(IMAGE_LIST2)):
-    for j in range(4):
+    for j in range(len(IMAGE_LIST2)):
         img = np.float32(imread(IMAGE_LIST2[j], as_gray=True) / 255.0 * 2 - 1)
         date = IMAGE_LIST2[j][-19:-4]
         img.shape = (BATCH_SIZE, ISIZE, ISIZE, NC_IN)
