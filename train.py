@@ -151,7 +151,7 @@ def unet_g(isize, nc_in, nc_out, fixed_input_size=True):
 
 # %%
 
-net_d = basic_d(128, NC_IN, NC_OUT, MAX_LAYERS) # debug, change 100 to ISIZE
+net_d = basic_d(128, NC_IN, NC_OUT, MAX_LAYERS) # debug, change 120 to ISIZE
 
 net_g = unet_g(128, NC_IN, NC_OUT) # debug, change 100 to ISIZE
 real_a = net_g.input
@@ -170,14 +170,161 @@ loss_d_real = loss_fn(output_d_real, K.ones_like(output_d_real))
 loss_d_fake = loss_fn(output_d_fake, K.zeros_like(output_d_fake))
 loss_g_fake = loss_fn(output_d_fake, K.ones_like(output_d_fake))
 
-loss_l = K.mean(K.abs(fake_b - real_b))
+# pca here
+def load_data(file_pattern):
+    return glob.glob(file_pattern)
+
+def load_images(folder_path):
+    images = []
+    for filename in os.listdir(folder_path):
+        img = imread(os.path.join(folder_path, filename))  # Load images as grayscale
+        if img is not None:
+            images.append(img)
+    return images
+
+from sklearn.decomposition import PCA
+folder_path = "/home/bwil0017/ir37_scratch/Stereo magnetograms vs hmi magnetograms cropped/test/test_output"
+def preprocess_images(images):
+    flattened_images = [img.flatten() for img in images]
+    return np.stack(flattened_images)
+
+images = load_images(folder_path)
+X = preprocess_images(images)
+n_components = 10  # Number of principal components
+pca = PCA(n_components=n_components).fit(X)
+
+
+# def loss_fn_l(output, target):
+#     loss = K.mean(K.abs(output - target))
+#     return loss
+
+
+
+
+
+
+
+
+
+# import numpy as np
+# from keras.layers import Layer
+# from keras import backend as K
+#
+# class PCALayer(Layer):
+#     def __init__(self, n_components, **kwargs):
+#         self.n_components = n_components
+#         super(PCALayer, self).__init__(**kwargs)
+#
+#     def build(self, input_shape):
+#         self.components = self.add_weight(name='components', shape=(int(input_shape[-1]), self.n_components),
+#                                           initializer='uniform', trainable=True)
+#         super(PCALayer, self).build(input_shape)
+#
+#     def call(self, inputs):
+#         centered_data = inputs - K.mean(inputs, axis=0)
+#         pca_result = K.dot(centered_data, self.components)
+#         return pca_result
+#
+# def loss_fn_l(output, target):
+#     # Apply PCA transformation to output and target tensors
+#     pca_layer = PCALayer(n_components=5)
+#     output_pca = pca_layer(output)
+#     target_pca = pca_layer(target)
+#
+#     # Calculate L1 distance between PCA-transformed output and target
+#     loss = K.mean(K.abs(output_pca - target_pca))
+#     return loss
+
+
+
+
+
+import numpy as np
+import os
+from keras.preprocessing import image
+from keras.layers import Layer
+from keras import backend as K
+from sklearn.decomposition import PCA
+
+class PCALayer(Layer):
+    def __init__(self, n_components, components=None, **kwargs):
+        self.n_components = n_components
+        self.components = K.variable(components) if components is not None else None
+        super(PCALayer, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+        if self.components is None:
+            raise ValueError("Principal components not provided.")
+        super(PCALayer, self).build(input_shape)
+
+    def call(self, inputs):
+        centered_data = inputs - K.mean(inputs, axis=0)
+        centered_data = K.reshape(centered_data, (-1, (self.components.shape)[0]))
+        pca_result = K.dot(centered_data, self.components)
+        return pca_result
+
+# Load all training images from the directory
+# image_dir = folder_path
+# images = []
+# start = (1024 - 128) // 2
+# for filename in os.listdir(image_dir):
+#     img = image.load_img(os.path.join(image_dir, filename))
+#     img_array = image.img_to_array(img)
+#     images.append(img_array)
+# images = np.array(images)
+
+
+
+# Flatten and concatenate images to create a single matrix
+# images_flat = images.reshape(images.shape[0], -1)
+#
+# # Apply PCA to obtain principal components
+# pca = PCA(n_components=2)
+# pca.fit(images_flat)
+components = pca.components_.T
+
+
+# Define PCA layer with precomputed components
+pca_layer = PCALayer(n_components=10, components=components)
+
+
+def loss_fn_l(output, target):
+    # Apply PCA transformation to output and target tensors
+    output_pca = pca_layer(output)
+    target_pca = pca_layer(target)
+
+    # Calculate L1 distance between PCA-transformed output and target
+    # loss = K.mean(K.abs(output_pca - target_pca))
+    loss = K.max(output_pca)
+    return loss
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+loss_l = loss_fn_l(fake_b,real_b)
+
+# loss_l =  K.mean(K.abs(fake_b - real_b))
+# loss_l =  np.mean(np.abs(fake_b.numpy() - real_b.numpy()))
+# loss_l = np.mean(np.abs(fake_b.np() - real_b.np()))
+# K.constant(np.mean(np.abs(np.array(fake_b)-np.array(real_b))))
 
 loss_d = loss_d_real + loss_d_fake
 training_updates_d = Adam(lr=2e-4, beta_1=0.5).get_updates(net_d.trainable_weights, [], loss_d)
 net_d_train = K.function([real_a, real_b], [loss_d / 2.0],
                          training_updates_d)  # initialises the discriminator training process
 
-loss_g = loss_g_fake + 100 * loss_l
+loss_g = loss_g_fake + 100000000 * loss_l
 training_updates_g = Adam(lr=2e-4, beta_1=0.5).get_updates(net_g.trainable_weights, [], loss_g)
 net_g_train = K.function([real_a, real_b], [loss_g_fake, loss_l], training_updates_g)
 
@@ -188,8 +335,7 @@ output_image_paths = glob.glob(IMAGE_PATH_OUTPUT)
 print("number of ground truth images", len(output_image_paths))
 
 
-def load_data(file_pattern):
-    return glob.glob(file_pattern)
+
 
 
 def read_image(fn, nc_in, nc_out):
@@ -279,6 +425,7 @@ while gen_iters <= NITERS:
     train_a = train_a[:, start:start + 128, start:start + 128, :]
     train_b = train_b[:, start:start + 128, start:start + 128, :]
 
+
     ERR_D, = net_d_train([train_a, train_b])  # update the weights then find the error
     err_d_sum += ERR_D
 
@@ -307,12 +454,18 @@ while gen_iters <= NITERS:
 
     gen_iters += 1
 
-plt.plot(err_l_list, label="l")
-plt.plot(err_g_list, label="g")
-plt.plot(err_d_list, label="d")
+plt.plot(err_l_list, label="L1")
+plt.plot(err_g_list, label="G")
+plt.plot(err_d_list, label="D")
 plt.xlabel("Iteration")
 plt.ylabel("Loss")
 plt.title("Losses")
 plt.legend()
 os.mkdir('./Figures/' + TRIAL_NAME) if not os.path.exists('./Figures/' + TRIAL_NAME) else None
 plt.savefig('./Figures/' + TRIAL_NAME + '/' + "loss.pdf")
+
+
+
+
+
+# idea use PCA for the loss only. Make the loss function do as follows: fit pca to the training output. pca transform the true and generated outputs, then find the loss.
