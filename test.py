@@ -23,11 +23,12 @@ with open("config.json", "r") as read_file:
 
 max_layers = config_file["max_layers"]
 mode = 'test_input_to_test_output'
-trial_name = f"TEST{max_layers}"
+
 
 SLEEP_TIME = 10
 DISPLAY_ITER = config_file["display_iter"]
 MAX_ITER = config_file["max_iter"]
+trial_name = f'{config_file["trial_name"]}_{MAX_ITER}_{max_layers}'
 
 INPUT = 'test_input'  # input used while training
 INPUT1 = 'test_input1'  # testing input with testing output (near side data)

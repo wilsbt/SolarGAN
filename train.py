@@ -40,7 +40,8 @@ with open("config.json", "r") as read_file:
 MAX_LAYERS = config_file["max_layers"]  # 1 for 16, 2 for 34, 3 for 70, 4 for 142, and 5 for 286
 DISPLAY_ITERS = config_file["display_iter"]
 NITERS = config_file["max_iter"]
-TRIAL_NAME = 'TEST' + str(MAX_LAYERS)
+
+TRIAL_NAME = f'{config_file["trial_name"]}_{NITERS}_{MAX_LAYERS}'
 
 MODE = INPUT_DATA + '_to_' + OUTPUT_DATA
 
