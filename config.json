@@ -1,8 +1,8 @@
 {
   "data_path": "/home/bwil0017/ir37_scratch/Stereo magnetograms vs hmi magnetograms",
   "max_layers": 1,
-  "max_iter": 1,
-  "display_iter": 1,
-  "trial_name": "Test Test"
+  "max_iter": 5,
+  "display_iter": 5,
+  "trial_name": "Test Loss"
 }
 

@@ -254,6 +254,10 @@ err_l_sum = 0
 err_g_sum = 0
 err_d_sum = 0
 
+err_l_list = [] # for saving loss values
+err_g_list = [] # for saving loss values
+err_d_list = [] # for saving loss values
+
 while gen_iters <= NITERS:
     current_epoch, train_a, train_b = next(
         train_batch)  # this returns the epoch number, and some other things. this just gets the next element from
@@ -272,6 +276,10 @@ while gen_iters <= NITERS:
     err_g_sum += err_g
     err_l_sum += err_l
 
+    err_d_list.append(ERR_D) # save loss value
+    err_g_list.append(err_g) # save loss value
+    err_l_list.append(err_l) # save loss value
+
     # info
     if gen_iters % DISPLAY_ITERS == 0:
         print('[%d][%d/%d] LOSS_D: %5.3f LOSS_G: %5.3f LOSS_L: %5.3f T: %dsec/%dits, Total T: %d'
@@ -288,3 +296,16 @@ while gen_iters <= NITERS:
         t1 = time.time()
 
     gen_iters += 1
+
+import matplotlib.pyplot as plt
+plt.plot(err_l_list, label="L1")
+plt.plot(err_g_list, label="G")
+plt.plot(err_d_list, label="D")
+plt.xlabel("Iteration")
+plt.ylabel("Loss")
+plt.title("Losses")
+plt.legend()
+os.mkdir('./Figures/' + TRIAL_NAME) if not os.path.exists('./Figures/' + TRIAL_NAME) else None
+plt.savefig('./Figures/' + TRIAL_NAME + '/' + "loss.pdf")
+
+np.savez('./Figures/' + TRIAL_NAME + '/loss_raw_data.npz', err_l_list=err_l_list, err_g_list=err_g_list, err_d_list=err_d_list)
