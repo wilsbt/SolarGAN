@@ -2,6 +2,7 @@ import numpy as np
 import os, glob, time
 from random import shuffle
 from imageio import imread
+import matplotlib.pyplot as plt
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
@@ -258,6 +259,8 @@ err_l_list = [] # for saving loss values
 err_g_list = [] # for saving loss values
 err_d_list = [] # for saving loss values
 
+os.mkdir('./Figures/' + TRIAL_NAME) if not os.path.exists('./Figures/' + TRIAL_NAME) else None # make folder for saving figures if none exists
+
 while gen_iters <= NITERS:
     current_epoch, train_a, train_b = next(
         train_batch)  # this returns the epoch number, and some other things. this just gets the next element from
@@ -295,17 +298,21 @@ while gen_iters <= NITERS:
         net_g.save(DST_MODEL)
         t1 = time.time()
 
+        # save list of loss values
+        np.savez('./Figures/' + TRIAL_NAME + '/loss_raw_data.npz', err_l_list=err_l_list, err_g_list=err_g_list,
+                 err_d_list=err_d_list)
+
+        # plot loss values
+        plt.plot(err_l_list, label="L1")
+        plt.plot(err_g_list, label="G")
+        plt.plot(err_d_list, label="D")
+        plt.xlabel("Iteration")
+        plt.ylabel("Loss")
+        plt.title("Losses")
+        plt.legend()
+        plt.savefig('./Figures/' + TRIAL_NAME + '/' + "loss.pdf")
+
     gen_iters += 1
 
-import matplotlib.pyplot as plt
-plt.plot(err_l_list, label="L1")
-plt.plot(err_g_list, label="G")
-plt.plot(err_d_list, label="D")
-plt.xlabel("Iteration")
-plt.ylabel("Loss")
-plt.title("Losses")
-plt.legend()
-os.mkdir('./Figures/' + TRIAL_NAME) if not os.path.exists('./Figures/' + TRIAL_NAME) else None
-plt.savefig('./Figures/' + TRIAL_NAME + '/' + "loss.pdf")
 
-np.savez('./Figures/' + TRIAL_NAME + '/loss_raw_data.npz', err_l_list=err_l_list, err_g_list=err_g_list, err_d_list=err_d_list)
+
